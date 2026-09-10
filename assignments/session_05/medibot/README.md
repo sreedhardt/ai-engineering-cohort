@@ -134,6 +134,8 @@ curl localhost:8000/health
 
 Passwords are PBKDF2-hashed (120k rounds), not stored in clear.
 
+![Login screen with the five demo accounts](docs/screenshots/01-login.png)
+
 ---
 
 ## Adversarial RBAC evidence
