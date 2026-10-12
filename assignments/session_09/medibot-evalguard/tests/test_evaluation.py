@@ -54,6 +54,21 @@ def test_controls_include_wrong_but_confident():
     assert "wrong_but_confident" in kinds
 
 
+def test_saved_observation_is_pii_redacted():
+    obs = _obs(target_answer="Claim CLM-2024-1002 for PAT-57447 is escalated.")
+    saved = obs.to_dict()
+    assert "PAT-57447" not in saved["target_answer"] and "CLM-2024-1002" not in saved["target_answer"]
+    assert "[patient_id redacted]" in saved["target_answer"]
+    assert "PAT-57447" in obs.target_answer, "in-memory text stays raw for the heuristics"
+
+
+def test_output_blocked_answer_is_withheld_from_saved_record():
+    obs = _obs(blocked=True, blocked_stage="output",
+               target_answer="Escalated: Kavya Menon (PAT-57447).")
+    saved = obs.to_dict()["target_answer"]
+    assert "Kavya" not in saved and "PAT-57447" not in saved
+
+
 # --- heuristics ------------------------------------------------------------
 
 

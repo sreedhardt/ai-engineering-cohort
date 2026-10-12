@@ -2,6 +2,7 @@
 
 import pytest
 
+from app import sql_rag
 from app.sql_rag import UnsafeSQLError, _execute, clean_sql, sql_rag_chain_verbose
 
 
@@ -37,6 +38,18 @@ class TestCleanSQL:
     def test_rejects_unsafe_or_missing(self, raw):
         with pytest.raises(UnsafeSQLError):
             clean_sql(raw)
+
+
+@pytest.mark.parametrize("raw", ["", "DELETE FROM claims"])
+def test_chain_degrades_gracefully_without_usable_sql(monkeypatch, raw):
+    """Empty model output (token budget spent on reasoning) or an unsafe
+    statement must produce a message, never an exception, and never run."""
+    calls = []
+    monkeypatch.setattr(sql_rag, "complete", lambda *a, **k: calls.append(1) or raw)
+    monkeypatch.setattr(sql_rag, "_execute", lambda sql: pytest.fail("must not execute"))
+    answer = sql_rag.sql_rag_chain("How many claims are escalated?")
+    assert "couldn't build a safe database query" in answer
+    assert calls == [1], "no answer-generation call after a rejected query"
 
 
 class TestDatabase:

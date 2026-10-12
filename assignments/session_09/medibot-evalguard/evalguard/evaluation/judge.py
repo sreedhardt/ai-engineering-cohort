@@ -7,7 +7,8 @@ judge is deliberately a different family, called separately, and shown the
 reference answer the generator never saw.
 
 The judge is built with OpenEvals' ``create_llm_as_judge`` and a Pydantic output
-schema, so its verdict arrives as a validated object. If the call fails or the
+schema, so its verdict arrives as a validated object (via tool calling on this
+model; see ``evalguard.models`` for why not strict JSON-schema mode). If the call fails or the
 output does not validate, the case is recorded as a judge error and counted as
 a fail — an unreadable grade is never a pass.
 """
@@ -89,7 +90,10 @@ def _judge():
     from evalguard.models import structured_chat_model  # noqa: PLC0415
 
     model = structured_chat_model(
-        settings.judge_model, settings.judge_max_tokens, reasoning_effort="none"
+        settings.judge_model,
+        settings.judge_max_tokens,
+        method=settings.judge_structured_method,
+        reasoning_effort="none",
     )
     return create_llm_as_judge(prompt=JUDGE_PROMPT, judge=model, output_schema=JudgeGrade)
 

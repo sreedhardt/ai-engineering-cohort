@@ -16,6 +16,12 @@ from app.llm import complete
 
 MAX_ROWS = 50
 
+# The model reasons before writing SQL, and reasoning and output share one
+# max_tokens budget. At 400 it sometimes spent 398 tokens thinking and returned
+# nothing (finish_reason="length"), which surfaced as an unhandled
+# UnsafeSQLError. Same failure the router guards against, with more to write.
+_SQL_MAX_TOKENS = 2048
+
 SCHEMA = """\
 TABLE claims (
     claim_id TEXT PRIMARY KEY, patient_id TEXT, patient_name TEXT,
@@ -116,8 +122,15 @@ def _format_rows(columns: list[str], rows: list[tuple]) -> str:
 
 def sql_rag_chain(question: str) -> str:
     """Natural language question -> natural language answer, grounded in SQL."""
-    raw_sql = complete(_SQL_SYSTEM, question, temperature=0.0, max_tokens=400)
-    sql = clean_sql(raw_sql)
+    raw_sql = complete(_SQL_SYSTEM, question, temperature=0.0, max_tokens=_SQL_MAX_TOKENS)
+    try:
+        sql = clean_sql(raw_sql)
+    except UnsafeSQLError:
+        # No usable SELECT came back. Nothing runs; say so instead of a 500.
+        return (
+            "I couldn't build a safe database query for that question. "
+            "Try rephrasing it as a specific count, total or comparison."
+        )
 
     try:
         columns, rows = _execute(sql)
@@ -133,7 +146,7 @@ def sql_rag_chain(question: str) -> str:
 
 def sql_rag_chain_verbose(question: str) -> dict:
     """Same chain, exposing the intermediate SQL for tests and the API response."""
-    raw_sql = complete(_SQL_SYSTEM, question, temperature=0.0, max_tokens=400)
+    raw_sql = complete(_SQL_SYSTEM, question, temperature=0.0, max_tokens=_SQL_MAX_TOKENS)
     sql = clean_sql(raw_sql)
     columns, rows = _execute(sql)
     answer = complete(

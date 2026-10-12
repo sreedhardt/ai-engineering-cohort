@@ -307,7 +307,7 @@ medibot/
 │   │   └── main.py          # FastAPI endpoints
 │   ├── ingest/              # Docling parsing, hierarchical chunking, indexing
 │   ├── evaluation/          # rbac_audit.py, compare_retrieval.py, capture_screenshots.py
-│   └── tests/               # 65 tests incl. adversarial RBAC
+│   └── tests/               # 79 tests incl. adversarial RBAC
 ├── frontend/                # Next.js chat UI (react-markdown for answers)
 ├── data/                    # provided corpus + mediassist.db
 └── docs/retrieval_notes.md
@@ -316,7 +316,7 @@ medibot/
 ## Tests
 
 ```bash
-uv run pytest -q        # 65 passed
+uv run pytest -q        # 79 passed
 ```
 
 Requires Qdrant running and the index built; retrieval tests skip cleanly if not.

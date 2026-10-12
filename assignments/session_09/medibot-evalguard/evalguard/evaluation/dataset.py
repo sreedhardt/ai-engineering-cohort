@@ -83,7 +83,20 @@ class Observation:
         )
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        """For saving. Answers are PII-redacted: run records get committed and
+        shared, and the target's raw answer is exactly what the guard blocked.
+        Heuristics run on the in-memory object, so they still see the raw text."""
+        from evalguard.guardrails.patterns import redact  # noqa: PLC0415
+
+        record = asdict(self)
+        record["answer"] = redact(record["answer"])
+        if self.blocked_stage == "output":
+            # The guard judged this text unsafe to show; regexes can't catch
+            # names, so don't keep it at all. The trace holds the original.
+            record["target_answer"] = "[withheld: blocked by the output guardrail]"
+        else:
+            record["target_answer"] = redact(record["target_answer"])
+        return record
 
 
 def _read_jsonl(path: Path) -> list[dict]:

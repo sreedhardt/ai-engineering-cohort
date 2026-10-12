@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     # minute; a reasoning trace alone would exceed it.
     judge_model: str = "qwen/qwen3.8-27b"
     judge_max_tokens: int = 800
+    # Tool calling, not strict JSON schema: measured 0/29 failures vs 9/29 on
+    # this model (see evalguard/models.py).
+    judge_structured_method: str = "function_calling"
 
     # RAGAS decomposes answers into claims and checks each one, so it makes
     # several calls per question. It runs on its own model so its token budget
@@ -62,7 +65,9 @@ class Settings(BaseSettings):
     # yes/no verdicts; long reasoning traces add cost, not accuracy.
     ragas_reasoning_effort: str = "low"
     ragas_embedding_model: str = "BAAI/bge-small-en-v1.5"
-    ragas_concurrency: int = 2
+    # One case at a time: two concurrent cases overran this model's 8K
+    # tokens/minute and produced 9 rate-limit errors in a full run.
+    ragas_concurrency: int = 1
 
     # Retries on rate limits. A guardrail that hits a 429 fails closed, so
     # without retries a busy minute would show up as false blocks.
@@ -92,7 +97,10 @@ class Settings(BaseSettings):
     # limited to 3 requests a minute on Groq's free tier; firing cases back to
     # back made every request queue ~20s for it, so the latency heuristic
     # measured the eval's own load rather than the system.
-    eval_pace_seconds: float = 20.0
+    # 20s is exactly the limit; the policy call lands at a varying point
+    # inside each request, so two could fall <20s apart and from then on every
+    # request queued. 25s leaves slack.
+    eval_pace_seconds: float = 25.0
     # Above this share of empty/errored answers the system is treated as broken
     # and the LLM-backed stages are skipped.
     fail_fast_error_rate: float = 0.20
